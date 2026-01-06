@@ -62,12 +62,11 @@ bool GLShader::checkCompileErrors(GLuint shader, std::string type) {
 }
 
 bool GLShader::load(const std::string& vertexPath,
-	const std::string& geometryPath,
 	const std::string& fragmentPath,
+	const std::string& geometryPath,
 	const std::string& tessControlPath) {
 	// Leer shaders
 	std::string vertexCode = readFile(vertexPath);
-	std::string geometryCode = readFile(geometryPath);
 	std::string fragmentCode = readFile(fragmentPath);
 
 	if (vertexCode.empty() || fragmentCode.empty()) {
@@ -76,11 +75,19 @@ bool GLShader::load(const std::string& vertexPath,
 
 	// Compilar shaders
 	GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexCode.c_str());
-	GLuint geometryShader = compileShader(GL_GEOMETRY_SHADER, geometryCode.c_str());
 	GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentCode.c_str());
 
 	if (!vertexShader || !fragmentShader) {
 		return false;
+	}
+
+	// Geometry shader opcional
+	GLuint geometryShader = 0;
+	if (!geometryPath.empty()) {
+		std::string geometryCode = readFile(geometryPath);
+		if (!geometryCode.empty()) {
+			geometryShader = compileShader(GL_GEOMETRY_SHADER, geometryCode.c_str());
+		}
 	}
 
 	// Tessellation shader opcional
@@ -95,11 +102,9 @@ bool GLShader::load(const std::string& vertexPath,
 	// Crear programa
 	programID = glCreateProgram();
 	glAttachShader(programID, vertexShader);
-	glAttachShader(programID, geometryShader);
 	glAttachShader(programID, fragmentShader);
-	if (tessControlShader != 0) {
-		glAttachShader(programID, tessControlShader);
-	}
+	if (geometryShader != 0)    glAttachShader(programID, geometryShader);
+	if (tessControlShader != 0) glAttachShader(programID, tessControlShader);
 
 	glLinkProgram(programID);
 
@@ -111,11 +116,9 @@ bool GLShader::load(const std::string& vertexPath,
 
 	// Limpiar shaders
 	glDeleteShader(vertexShader);
-	glDeleteShader(geometryShader);
 	glDeleteShader(fragmentShader);
-	if (tessControlShader != 0) {
-		glDeleteShader(tessControlShader);
-	}
+	if (geometryShader != 0)    glDeleteShader(geometryShader);
+	if (tessControlShader != 0) glDeleteShader(tessControlShader);
 
 	std::cout << "Shaders loaded successfully" << std::endl;
 	return true;
@@ -138,17 +141,17 @@ void GLShader::setFloat(const std::string& name, float value) {
 }
 
 void GLShader::setVec2(const std::string& name, const glm::vec2& value) {
-	glUniform2fv(glGetUniformLocation(programID, name.c_str()), 1, &value[0]);
+	glUniform2fv(glGetUniformLocation(programID, name.c_str()), 1, glm::value_ptr(value));
 }
 
 void GLShader::setVec3(const std::string& name, const glm::vec3& value) {
-	glUniform3fv(glGetUniformLocation(programID, name.c_str()), 1, &value[0]);
+	glUniform3fv(glGetUniformLocation(programID, name.c_str()), 1, glm::value_ptr(value));
 }
 
 void GLShader::setVec4(const std::string& name, const glm::vec4& value) {
-	glUniform4fv(glGetUniformLocation(programID, name.c_str()), 1, &value[0]);
+	glUniform4fv(glGetUniformLocation(programID, name.c_str()), 1, glm::value_ptr(value));
 }
 
 void GLShader::setMat4(const std::string& name, const glm::mat4& value) {
-	glUniformMatrix4fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, &value[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
 }

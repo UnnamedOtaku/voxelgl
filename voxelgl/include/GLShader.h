@@ -22,10 +22,10 @@ public:
 	GLShader();
 	~GLShader();
 
-	bool load(const std::string& vertexPath,
-			  const std::string& geometryPath,
-			  const std::string& fragmentPath,
-			  const std::string& tessControlPath);
+	bool load(const std::string& vertexPath      = "",
+			  const std::string& fragmentPath    = "",
+			  const std::string& geometryPath    = "",
+			  const std::string& tessControlPath = "");
 	void use();
 
 	// Uniform setters
