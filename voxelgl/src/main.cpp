@@ -1,4 +1,5 @@
 #include "GLShader.h"
+#include "GreedyMesher.h"
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -16,6 +17,14 @@ bool firstMouse = true;
 float lastX = 640, lastY = 360;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+GreedyMesher mesher;
+glm::ivec3 chunkSize(3, 3, 3);
+std::vector<uint8_t> chunk = {
+	1, 0, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1
+};
+Mesh mesh = mesher.greedy3DBinaryToVertices(chunk.data(), chunkSize);
 
 // Buffers de OpenGL
 GLuint vao, vbo, ebo;
@@ -105,6 +114,7 @@ bool initGL() {
 
 	// Configurar OpenGL
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_NEAREST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
@@ -120,55 +130,6 @@ int main() {
 		return -1;
 	}
 
-	// Datos del cubo - SOLO CARA FRONTAL (4 vértices)
-	const GLfloat voxel[] = {
-		// Front face
-		-0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 1.0f,
-
-		// Back face
-		-0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,     1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,     1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,     0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,     0.0f, 0.0f,
-
-		// Right face
-		 0.5f, -0.5f,  0.5f,    1.0f,  0.0f,  0.0f,     0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,     1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,    1.0f,  0.0f,  0.0f,     1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,     0.0f, 1.0f,
-
-		// Left face
-		-0.5f, -0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,     1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,     1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,     0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,     0.0f, 0.0f,
-
-		// Top face
-		-0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,     0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,     1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,     1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,     0.0f, 0.0f,
-
-		// Bottom face
-		-0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,     1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,     1.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,     0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,     0.0f, 1.0f
-	};
-
-	// ÍNDICES CORRECTOS para formar 2 triángulos (quad)
-	const GLuint voxelIndices[] = {
-		0, 1, 2, 2, 3, 0,       // Front
-		4, 5, 6, 6, 7, 4,       // Back
-		8, 9, 10, 10, 11, 8,    // Right
-		12, 13, 14, 14, 15, 12, // Left
-		16, 17, 18, 18, 19, 16, // Top
-		20, 21, 22, 22, 23, 20  // Bottom
-	};
-
 	// Crear y configurar VAO, VBO, EBO
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
@@ -178,23 +139,23 @@ int main() {
 
 	// 1. Vértices
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(voxel), voxel, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data(), GL_STATIC_DRAW);
 
 	// 2. Índices
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(voxelIndices), voxelIndices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(GLuint), mesh.indices.data(), GL_STATIC_DRAW);
 
 	// 3. Atributos de vértice
 	// Posición (location = 0)
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
 	glEnableVertexAttribArray(0);
 
 	// Normal (location = 1)
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 	glEnableVertexAttribArray(1);
 
 	// UV (location = 2)
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 	glEnableVertexAttribArray(2);
 
 	// Desvincular buffers
@@ -253,7 +214,7 @@ int main() {
 
 		// Dibujar geometría
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, sizeof(voxelIndices) / sizeof(GLuint), GL_UNSIGNED_INT, 0); // 6 índices = 2 triángulos
+		glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, 0); // 6 índices = 2 triángulos
 		glBindVertexArray(0);
 
 		// Actualizar FPS en el título
